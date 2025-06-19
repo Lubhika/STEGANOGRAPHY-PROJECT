@@ -1,0 +1,64 @@
+import cv2
+import numpy as np
+
+# Function to encode (hide) data in an image
+def encode_image(image_path, secret_message, output_path):
+    img = cv2.imread(image_path)
+    if img is None:
+        print("Error: Image not found!")
+        return
+    
+    secret_message += "END"  # Delimiter to mark the end of the message
+    binary_message = ''.join(format(ord(i), '08b') for i in secret_message)
+    
+    data_index = 0
+    message_length = len(binary_message)
+    rows, cols, _ = img.shape
+
+    if message_length > rows * cols * 3:
+        print("Error: Message is too large to hide in this image.")
+        return
+
+    for row in range(rows):
+        for col in range(cols):
+            for color in range(3):  # Iterate over RGB channels
+                if data_index < message_length:
+                    img[row, col, color] = (img[row, col, color] & 254) | int(binary_message[data_index])
+                    data_index += 1
+
+    cv2.imwrite(output_path, img)
+    print(f"Encoding complete! Saved as {output_path}")
+
+# Function to decode (extract) data from an image
+def decode_image(image_path):
+    img = cv2.imread(image_path)
+    if img is None:
+        print("Error: Image not found!")
+        return
+    
+    binary_data = ""
+    for row in img:
+        for pixel in row:
+            for color in pixel[:3]:  # Read RGB channels
+                binary_data += str(color & 1)
+
+    # Convert binary data to text
+    message = ""
+    for i in range(0, len(binary_data), 8):
+        char = chr(int(binary_data[i:i+8], 2))
+        if message[-3:] == "END":
+            break
+        message += char
+
+    print(f"Decoded Message: {message[:-3]}")  # Remove "END" delimiter
+
+# Example usage
+image_file = "input.png"  # Change to your input image
+encoded_file = "encoded_image.png"
+
+# Hide a secret message
+secret_text = "Hello, this is hidden data!"
+encode_image(image_file, secret_text, encoded_file)
+
+# Extract the hidden message
+decode_image(encoded_file)
